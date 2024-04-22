@@ -1,93 +1,188 @@
-// Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
-
 package provider
 
 import (
 	"context"
-	"net/http"
+	"os"
 
+	sp "github.com/brandedtech/sp-api-sdk/pkg/selling-partner"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/function"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
-// Ensure ScaffoldingProvider satisfies various provider interfaces.
-var _ provider.Provider = &ScaffoldingProvider{}
-var _ provider.ProviderWithFunctions = &ScaffoldingProvider{}
+var (
+	_ provider.Provider = &SPAPIProvider{}
+)
 
-// ScaffoldingProvider defines the provider implementation.
-type ScaffoldingProvider struct {
+type SPAPIProvider struct {
 	// version is set to the provider version on release, "dev" when the
 	// provider is built and ran locally, and "test" when running acceptance
 	// testing.
 	version string
 }
 
-// ScaffoldingProviderModel describes the provider data model.
-type ScaffoldingProviderModel struct {
-	Endpoint types.String `tfsdk:"endpoint"`
+type SPAPIProviderModel struct {
+	LWAClientID     types.String `tfsdk:"lwa_client_id"`
+	LWAClientSecret types.String `tfsdk:"lwa_client_secret"`
+	RefreshToken    types.String `tfsdk:"refresh_token"`
 }
 
-func (p *ScaffoldingProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
-	resp.TypeName = "scaffolding"
+func New(version string) func() provider.Provider {
+	return func() provider.Provider {
+		return &SPAPIProvider{
+			version: version,
+		}
+	}
+}
+
+func (p *SPAPIProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
+	resp.TypeName = "spapi"
 	resp.Version = p.version
 }
 
-func (p *ScaffoldingProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
+func (p *SPAPIProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"endpoint": schema.StringAttribute{
-				MarkdownDescription: "Example provider attribute",
-				Optional:            true,
+			"lwa_client_id": schema.StringAttribute{
+				Required: true,
+			},
+			"lwa_client_secret": schema.StringAttribute{
+				Required:  true,
+				Sensitive: true,
+			},
+			"refresh_token": schema.StringAttribute{
+				Required:  true,
+				Sensitive: true,
 			},
 		},
 	}
 }
 
-func (p *ScaffoldingProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
-	var data ScaffoldingProviderModel
+func (p *SPAPIProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
+	tflog.Info(ctx, "Configuring Selling Partner client")
 
-	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	var config SPAPIProviderModel
+	diags := req.Config.Get(ctx, &config)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if config.LWAClientID.IsUnknown() {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("lwa_client_id"),
+			"Unknown LWA client ID",
+			"The provider cannot create the SP-API client as there is an unknown configuration value for the SP-API LWA client ID. "+
+				"Either target apply the source of the value first, set the value statically in the configuration, or use the SP_API_LWA_CLIENT_ID environment variable.",
+		)
+	}
+
+	if config.LWAClientSecret.IsUnknown() {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("lwa_client_secret"),
+			"Unknown LWA client secret",
+			"The provider cannot create the SP-API client as there is an unknown configuration value for the SP-API LWA client secret. "+
+				"Either target apply the source of the value first, set the value statically in the configuration, or use the SP_API_LWA_CLIENT_SECRET environment variable.",
+		)
+	}
+
+	if config.RefreshToken.IsUnknown() {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("refresh_token"),
+			"Unknown refresh token",
+			"The provider cannot create the SP-API client as there is an unknown configuration value for the SP-API refresh token. "+
+				"Either target apply the source of the value first, set the value statically in the configuration, or use the SP_API_REFRESH_TOKEN environment variable.",
+		)
+	}
 
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// Configuration values are now available.
-	// if data.Endpoint.IsNull() { /* ... */ }
+	lwaClientID := os.Getenv("SP_API_LWA_CLIENT_ID")
+	lwaClientSecret := os.Getenv("SP_API_LWA_CLIENT_SECRET")
+	refreshToken := os.Getenv("SP_API_REFRESH_TOKEN")
 
-	// Example client configuration for data sources and resources
-	client := http.DefaultClient
-	resp.DataSourceData = client
-	resp.ResourceData = client
+	if !config.LWAClientID.IsNull() {
+		lwaClientID = config.LWAClientID.ValueString()
+	}
+
+	if !config.LWAClientSecret.IsNull() {
+		lwaClientSecret = config.LWAClientSecret.ValueString()
+	}
+
+	if !config.RefreshToken.IsNull() {
+		refreshToken = config.RefreshToken.ValueString()
+	}
+
+	if lwaClientID == "" {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("lwa_client_id"),
+			"SP-API LWA client ID is not set",
+			"The provider cannot create the SP-API client as there is no SP-API LWA client ID. "+
+				"Either target apply the source of the value first, set the value statically in the configuration, or use the SP_API_LWA_CLIENT_ID environment variable.",
+		)
+	}
+
+	if lwaClientSecret == "" {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("lwa_client_secret"),
+			"SP-API LWA client secret is not set",
+			"The provider cannot create the SP-API client as there is no SP-API LWA client secret. "+
+				"Either target apply the source of the value first, set the value statically in the configuration, or use the SP_API_LWA_CLIENT_SECRET environment variable.",
+		)
+	}
+
+	if refreshToken == "" {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("refresh_token"),
+			"SP-API refresh token is not set",
+			"The provider cannot create the SP-API client as there is no SP-API refresh token. "+
+				"Either target apply the source of the value first, set the value statically in the configuration, or use the SP_API_REFRESH_TOKEN environment variable.",
+		)
+	}
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	sellingPartner, err := sp.NewSellingPartner(&sp.Config{
+		ClientID:     lwaClientID,
+		ClientSecret: lwaClientSecret,
+		RefreshToken: refreshToken,
+	})
+
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to create SP-API client",
+			"The provider cannot create the SP-API client as there was an error creating the SP-API client. \n\n"+
+				"HashiCups Client Error: "+err.Error(),
+		)
+		return
+	}
+
+	resp.DataSourceData = sellingPartner
+	resp.ResourceData = sellingPartner
 }
 
-func (p *ScaffoldingProvider) Resources(ctx context.Context) []func() resource.Resource {
+func (p *SPAPIProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
-		NewExampleResource,
+		NewNotificationDestinationResource,
+		NewNotificationSubscriptionResource,
 	}
 }
 
-func (p *ScaffoldingProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
+func (p *SPAPIProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
-		NewExampleDataSource,
+		NewNotificationDestinationsDatasource,
 	}
 }
 
-func (p *ScaffoldingProvider) Functions(ctx context.Context) []func() function.Function {
-	return []func() function.Function{
-		NewExampleFunction,
-	}
-}
-
-func New(version string) func() provider.Provider {
-	return func() provider.Provider {
-		return &ScaffoldingProvider{
-			version: version,
-		}
-	}
+func (p *SPAPIProvider) Functions(ctx context.Context) []func() function.Function {
+	return nil
 }
