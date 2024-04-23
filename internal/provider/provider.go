@@ -49,14 +49,14 @@ func (p *SPAPIProvider) Schema(ctx context.Context, req provider.SchemaRequest, 
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"lwa_client_id": schema.StringAttribute{
-				Required: true,
+				Optional: true,
 			},
 			"lwa_client_secret": schema.StringAttribute{
-				Required:  true,
+				Optional:  true,
 				Sensitive: true,
 			},
 			"refresh_token": schema.StringAttribute{
-				Required:  true,
+				Optional:  true,
 				Sensitive: true,
 			},
 		},
