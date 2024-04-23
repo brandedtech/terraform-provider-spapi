@@ -25,10 +25,6 @@ type notificationDestinationsDatasource struct {
 	sellingPartner *sp.SellingPartner
 }
 
-type notificationDestinationsDataSourceModel struct {
-	Destinations []notificationDestinationModel `tfsdk:"destinations"`
-}
-
 func (n *notificationDestinationsDatasource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
@@ -54,6 +50,9 @@ func (d *notificationDestinationsDatasource) Metadata(_ context.Context, req dat
 func (d *notificationDestinationsDatasource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
+			"region": schema.StringAttribute{
+				Computed: true,
+			},
 			"destinations": schema.ListNestedAttribute{
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
@@ -103,7 +102,7 @@ func (d *notificationDestinationsDatasource) Schema(ctx context.Context, req dat
 func (n *notificationDestinationsDatasource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var state notificationDestinationsDataSourceModel
 
-	client, err := notifications.NewClientWithResponses("https://sellingpartnerapi-na.amazon.com",
+	client, err := notifications.NewClientWithResponses(RegionToEndpoint(state.Region.ValueString()),
 		notifications.WithRequestBefore(func(ctx context.Context, req *http.Request) error {
 			return n.sellingPartner.AuthorizeRequestWithScope(req, "sellingpartnerapi::notifications")
 		}),
@@ -121,20 +120,19 @@ func (n *notificationDestinationsDatasource) Read(ctx context.Context, req datas
 	}
 
 	for _, destination := range *destinations.Model.Payload {
-		model := notificationDestinationModel{
-			ID:       types.StringValue(destination.DestinationId),
-			Name:     types.StringValue(destination.Name),
-			Resource: notificationDestinationResourceModel{},
+		model := notificationDestination{
+			ID:   types.StringValue(destination.DestinationId),
+			Name: types.StringValue(destination.Name),
 		}
 
 		if destination.Resource.Sqs != nil {
-			model.Resource.SQS = &notificationDestinationResourceSQSModel{
+			model.Resource.SQS = &notificationDestinationAWSResourceSQS{
 				ARN: types.StringValue(destination.Resource.Sqs.Arn),
 			}
 		}
 
 		if destination.Resource.EventBridge != nil {
-			model.Resource.EventBridge = &notificationDestinationResourceEventBridgeModel{
+			model.Resource.EventBridge = &notificationDestinationAWSResourceEventBridge{
 				Name:      types.StringValue(destination.Resource.EventBridge.Name),
 				Region:    types.StringValue(destination.Resource.EventBridge.Region),
 				AccountID: types.StringValue(destination.Resource.EventBridge.AccountId),

@@ -2,23 +2,33 @@ package provider
 
 import "github.com/hashicorp/terraform-plugin-framework/types"
 
-type notificationDestinationModel struct {
-	ID       types.String                         `tfsdk:"id"`
-	Name     types.String                         `tfsdk:"name"`
-	Resource notificationDestinationResourceModel `tfsdk:"resource"`
+type notificationDestination struct {
+	ID       types.String                       `tfsdk:"id"`
+	Name     types.String                       `tfsdk:"name"`
+	Resource notificationDestinationAWSResource `tfsdk:"resource"`
 }
 
-type notificationDestinationResourceModel struct {
-	SQS         *notificationDestinationResourceSQSModel         `tfsdk:"sqs"`
-	EventBridge *notificationDestinationResourceEventBridgeModel `tfsdk:"event_bridge"`
+type notificationDestinationAWSResource struct {
+	SQS         *notificationDestinationAWSResourceSQS         `tfsdk:"sqs"`
+	EventBridge *notificationDestinationAWSResourceEventBridge `tfsdk:"event_bridge"`
 }
 
-type notificationDestinationResourceSQSModel struct {
+type notificationDestinationAWSResourceSQS struct {
 	ARN types.String `tfsdk:"arn"`
 }
 
-type notificationDestinationResourceEventBridgeModel struct {
+type notificationDestinationAWSResourceEventBridge struct {
 	Name      types.String `tfsdk:"name"`
 	Region    types.String `tfsdk:"region"`
 	AccountID types.String `tfsdk:"account_id"`
+}
+
+type notificationDestinationResourceModel struct {
+	Region types.String `tfsdk:"region"`
+	notificationDestination
+}
+
+type notificationDestinationsDataSourceModel struct {
+	Region       types.String              `tfsdk:"region"`
+	Destinations []notificationDestination `tfsdk:"destinations"`
 }

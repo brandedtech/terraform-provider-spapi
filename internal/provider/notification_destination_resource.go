@@ -56,6 +56,9 @@ func (r *notificationDestinationResource) Configure(_ context.Context, req resou
 func (r *notificationDestinationResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
+			"region": schema.StringAttribute{
+				Required: true,
+			},
 			"id": schema.StringAttribute{
 				Computed: true,
 			},
@@ -95,7 +98,7 @@ func (r *notificationDestinationResource) Schema(_ context.Context, _ resource.S
 
 // Create creates the resource and sets the initial Terraform state.
 func (r *notificationDestinationResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var plan notificationDestinationModel
+	var plan notificationDestinationResourceModel
 
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -103,7 +106,7 @@ func (r *notificationDestinationResource) Create(ctx context.Context, req resour
 		return
 	}
 
-	client, err := notifications.NewClientWithResponses("https://sellingpartnerapi-na.amazon.com",
+	client, err := notifications.NewClientWithResponses(RegionToEndpoint(plan.Region.ValueString()),
 		notifications.WithRequestBefore(func(ctx context.Context, req *http.Request) error {
 			return r.sellingPartner.AuthorizeRequestWithScope(req, "sellingpartnerapi::notifications")
 		}),
@@ -155,7 +158,7 @@ func (r *notificationDestinationResource) Create(ctx context.Context, req resour
 
 // Read refreshes the Terraform state with the latest data.
 func (r *notificationDestinationResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var state notificationDestinationModel
+	var state notificationDestinationResourceModel
 
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -163,7 +166,7 @@ func (r *notificationDestinationResource) Read(ctx context.Context, req resource
 		return
 	}
 
-	client, err := notifications.NewClientWithResponses("https://sellingpartnerapi-na.amazon.com",
+	client, err := notifications.NewClientWithResponses(RegionToEndpoint(state.Region.ValueString()),
 		notifications.WithRequestBefore(func(ctx context.Context, req *http.Request) error {
 			return r.sellingPartner.AuthorizeRequestWithScope(req, "sellingpartnerapi::notifications")
 		}),

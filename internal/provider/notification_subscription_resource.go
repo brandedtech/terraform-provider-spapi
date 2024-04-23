@@ -57,6 +57,9 @@ func (r *notificationSubscriptionResource) Configure(_ context.Context, req reso
 func (r *notificationSubscriptionResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
+			"region": schema.StringAttribute{
+				Required: true,
+			},
 			"id": schema.StringAttribute{
 				Computed: true,
 			},
@@ -76,7 +79,7 @@ func (r *notificationSubscriptionResource) Schema(_ context.Context, _ resource.
 
 // Create creates the resource and sets the initial Terraform state.
 func (r *notificationSubscriptionResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var plan notificationSubscriptionModel
+	var plan notificationSubscriptionResourceModel
 
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -84,7 +87,7 @@ func (r *notificationSubscriptionResource) Create(ctx context.Context, req resou
 		return
 	}
 
-	client, err := notifications.NewClientWithResponses("https://sellingpartnerapi-na.amazon.com",
+	client, err := notifications.NewClientWithResponses(RegionToEndpoint(plan.Region.ValueString()),
 		notifications.WithRequestBefore(func(ctx context.Context, req *http.Request) error {
 			return r.sellingPartner.AuthorizeRequest(req)
 		}),
@@ -121,7 +124,7 @@ func (r *notificationSubscriptionResource) Create(ctx context.Context, req resou
 
 // Read refreshes the Terraform state with the latest data.
 func (r *notificationSubscriptionResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var state notificationSubscriptionModel
+	var state notificationSubscriptionResourceModel
 
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -129,7 +132,7 @@ func (r *notificationSubscriptionResource) Read(ctx context.Context, req resourc
 		return
 	}
 
-	client, err := notifications.NewClientWithResponses("https://sellingpartnerapi-na.amazon.com",
+	client, err := notifications.NewClientWithResponses(RegionToEndpoint(state.Region.ValueString()),
 		notifications.WithRequestBefore(func(ctx context.Context, req *http.Request) error {
 			return r.sellingPartner.AuthorizeRequestWithScope(req, "sellingpartnerapi::notifications")
 		}),

@@ -5,7 +5,7 @@ terraform {
       version = "5.45.0"
     }
     spapi = {
-      source = "hashicorp.com/edu/spapi"
+      source = "brandedtech/spapi"
     }
   }
 }
