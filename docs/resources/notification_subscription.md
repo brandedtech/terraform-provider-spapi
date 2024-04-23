@@ -19,6 +19,7 @@ description: |-
 
 - `destination_id` (String)
 - `notification_type` (String)
+- `region` (String)
 
 ### Read-Only
 

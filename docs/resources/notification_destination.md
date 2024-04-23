@@ -18,6 +18,7 @@ description: |-
 ### Required
 
 - `name` (String)
+- `region` (String)
 - `resource` (Attributes) (see [below for nested schema](#nestedatt--resource))
 
 ### Read-Only

@@ -18,6 +18,7 @@ description: |-
 ### Read-Only
 
 - `destinations` (Attributes List) (see [below for nested schema](#nestedatt--destinations))
+- `region` (String)
 
 <a id="nestedatt--destinations"></a>
 ### Nested Schema for `destinations`
