@@ -24,8 +24,10 @@ type notificationDestinationAWSResourceEventBridge struct {
 }
 
 type notificationDestinationResourceModel struct {
-	Region types.String `tfsdk:"region"`
-	notificationDestination
+	Region   types.String                       `tfsdk:"region"`
+	ID       types.String                       `tfsdk:"id"`
+	Name     types.String                       `tfsdk:"name"`
+	Resource notificationDestinationAWSResource `tfsdk:"resource"`
 }
 
 type notificationDestinationsDataSourceModel struct {
