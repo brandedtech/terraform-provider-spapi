@@ -4,13 +4,17 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/http/httputil"
 
 	"github.com/brandedtech/sp-api-sdk/notifications"
 	sp "github.com/brandedtech/sp-api-sdk/pkg/selling-partner"
+	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"github.com/pkg/errors"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
@@ -89,7 +93,27 @@ func (r *notificationSubscriptionResource) Create(ctx context.Context, req resou
 
 	client, err := notifications.NewClientWithResponses(RegionToEndpoint(plan.Region.ValueString()),
 		notifications.WithRequestBefore(func(ctx context.Context, req *http.Request) error {
-			return r.sellingPartner.AuthorizeRequest(req)
+			req.Header.Add("X-Amzn-Requestid", uuid.New().String())
+			if err := r.sellingPartner.AuthorizeRequest(req); err != nil {
+				return errors.Wrap(err, "sign error")
+			}
+
+			dump, err := httputil.DumpRequest(req, true)
+			if err != nil {
+				return errors.Wrap(err, "DumpRequest Error")
+			}
+
+			tflog.Info(ctx, string(dump))
+			return nil
+		}),
+		notifications.WithResponseAfter(func(ctx context.Context, resp *http.Response) error {
+			dump, err := httputil.DumpResponse(resp, true)
+			if err != nil {
+				return errors.Wrap(err, "DumpResponse Error")
+			}
+
+			tflog.Info(ctx, string(dump))
+			return nil
 		}),
 	)
 
