@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/brandedtech/sp-api-sdk/notifications"
-	sp "github.com/brandedtech/sp-api-sdk/pkg/selling-partner"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -25,7 +24,7 @@ func NewNotificationDestinationResource() resource.Resource {
 
 // orderResource is the resource implementation.
 type notificationDestinationResource struct {
-	sellingPartner *sp.SellingPartner
+	providerData *SPAPIProviderData
 }
 
 // Metadata returns the resource type name.
@@ -38,7 +37,7 @@ func (r *notificationDestinationResource) Configure(_ context.Context, req resou
 		return
 	}
 
-	sellingPartner, ok := req.ProviderData.(*sp.SellingPartner)
+	providerData, ok := req.ProviderData.(*SPAPIProviderData)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -49,7 +48,7 @@ func (r *notificationDestinationResource) Configure(_ context.Context, req resou
 		return
 	}
 
-	r.sellingPartner = sellingPartner
+	r.providerData = providerData
 }
 
 // Schema defines the schema for the resource.
@@ -108,7 +107,7 @@ func (r *notificationDestinationResource) Create(ctx context.Context, req resour
 
 	client, err := notifications.NewClientWithResponses(RegionToEndpoint(plan.Region.ValueString()),
 		notifications.WithRequestBefore(func(ctx context.Context, req *http.Request) error {
-			return r.sellingPartner.AuthorizeRequestWithScope(req, "sellingpartnerapi::notifications")
+			return r.providerData.Grantless.AuthorizeRequestWithScope(req, "sellingpartnerapi::notifications")
 		}),
 	)
 
@@ -168,7 +167,7 @@ func (r *notificationDestinationResource) Read(ctx context.Context, req resource
 
 	client, err := notifications.NewClientWithResponses(RegionToEndpoint(state.Region.ValueString()),
 		notifications.WithRequestBefore(func(ctx context.Context, req *http.Request) error {
-			return r.sellingPartner.AuthorizeRequestWithScope(req, "sellingpartnerapi::notifications")
+			return r.providerData.Grantless.AuthorizeRequestWithScope(req, "sellingpartnerapi::notifications")
 		}),
 	)
 

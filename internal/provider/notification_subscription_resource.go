@@ -4,17 +4,12 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"net/http/httputil"
 
 	"github.com/brandedtech/sp-api-sdk/notifications"
-	sp "github.com/brandedtech/sp-api-sdk/pkg/selling-partner"
-	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
-	"github.com/pkg/errors"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
@@ -30,7 +25,7 @@ func NewNotificationSubscriptionResource() resource.Resource {
 
 // orderResource is the resource implementation.
 type notificationSubscriptionResource struct {
-	sellingPartner *sp.SellingPartner
+	providerData *SPAPIProviderData
 }
 
 // Metadata returns the resource type name.
@@ -43,7 +38,7 @@ func (r *notificationSubscriptionResource) Configure(_ context.Context, req reso
 		return
 	}
 
-	sellingPartner, ok := req.ProviderData.(*sp.SellingPartner)
+	providerData, ok := req.ProviderData.(*SPAPIProviderData)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -54,7 +49,7 @@ func (r *notificationSubscriptionResource) Configure(_ context.Context, req reso
 		return
 	}
 
-	r.sellingPartner = sellingPartner
+	r.providerData = providerData
 }
 
 // Schema defines the schema for the resource.
@@ -93,27 +88,7 @@ func (r *notificationSubscriptionResource) Create(ctx context.Context, req resou
 
 	client, err := notifications.NewClientWithResponses(RegionToEndpoint(plan.Region.ValueString()),
 		notifications.WithRequestBefore(func(ctx context.Context, req *http.Request) error {
-			req.Header.Add("X-Amzn-Requestid", uuid.New().String())
-			if err := r.sellingPartner.AuthorizeRequest(req); err != nil {
-				return errors.Wrap(err, "sign error")
-			}
-
-			dump, err := httputil.DumpRequest(req, true)
-			if err != nil {
-				return errors.Wrap(err, "DumpRequest Error")
-			}
-
-			tflog.Info(ctx, string(dump))
-			return nil
-		}),
-		notifications.WithResponseAfter(func(ctx context.Context, resp *http.Response) error {
-			dump, err := httputil.DumpResponse(resp, true)
-			if err != nil {
-				return errors.Wrap(err, "DumpResponse Error")
-			}
-
-			tflog.Info(ctx, string(dump))
-			return nil
+			return r.providerData.Default.AuthorizeRequest(req)
 		}),
 	)
 
@@ -158,7 +133,7 @@ func (r *notificationSubscriptionResource) Read(ctx context.Context, req resourc
 
 	client, err := notifications.NewClientWithResponses(RegionToEndpoint(state.Region.ValueString()),
 		notifications.WithRequestBefore(func(ctx context.Context, req *http.Request) error {
-			return r.sellingPartner.AuthorizeRequestWithScope(req, "sellingpartnerapi::notifications")
+			return r.providerData.Grantless.AuthorizeRequestWithScope(req, "sellingpartnerapi::notifications")
 		}),
 	)
 

@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/brandedtech/sp-api-sdk/notifications"
-	sp "github.com/brandedtech/sp-api-sdk/pkg/selling-partner"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -22,15 +21,15 @@ func NewNotificationDestinationsDatasource() datasource.DataSource {
 }
 
 type notificationDestinationsDatasource struct {
-	sellingPartner *sp.SellingPartner
+	providerData *SPAPIProviderData
 }
 
-func (n *notificationDestinationsDatasource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (d *notificationDestinationsDatasource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
 
-	sellingPartner, ok := req.ProviderData.(*sp.SellingPartner)
+	providerData, ok := req.ProviderData.(*SPAPIProviderData)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
@@ -40,7 +39,7 @@ func (n *notificationDestinationsDatasource) Configure(_ context.Context, req da
 		return
 	}
 
-	n.sellingPartner = sellingPartner
+	d.providerData = providerData
 }
 
 func (d *notificationDestinationsDatasource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -104,7 +103,7 @@ func (n *notificationDestinationsDatasource) Read(ctx context.Context, req datas
 
 	client, err := notifications.NewClientWithResponses(RegionToEndpoint(state.Region.ValueString()),
 		notifications.WithRequestBefore(func(ctx context.Context, req *http.Request) error {
-			return n.sellingPartner.AuthorizeRequestWithScope(req, "sellingpartnerapi::notifications")
+			return n.providerData.Grantless.AuthorizeRequestWithScope(req, "sellingpartnerapi::notifications")
 		}),
 	)
 

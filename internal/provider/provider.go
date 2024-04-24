@@ -32,6 +32,11 @@ type SPAPIProviderModel struct {
 	RefreshToken    types.String `tfsdk:"refresh_token"`
 }
 
+type SPAPIProviderData struct {
+	Default   *sp.SellingPartner
+	Grantless *sp.SellingPartner
+}
+
 func New(version string) func() provider.Provider {
 	return func() provider.Provider {
 		return &SPAPIProvider{
@@ -166,8 +171,15 @@ func (p *SPAPIProvider) Configure(ctx context.Context, req provider.ConfigureReq
 		return
 	}
 
-	resp.DataSourceData = sellingPartner
-	resp.ResourceData = sellingPartner
+	grantlessSellingPartner := *sellingPartner
+
+	data := &SPAPIProviderData{
+		Default:   sellingPartner,
+		Grantless: &grantlessSellingPartner,
+	}
+
+	resp.DataSourceData = data
+	resp.ResourceData = data
 }
 
 func (p *SPAPIProvider) Resources(ctx context.Context) []func() resource.Resource {
