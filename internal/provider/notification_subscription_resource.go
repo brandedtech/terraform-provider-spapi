@@ -98,7 +98,7 @@ func (r *notificationSubscriptionResource) Create(ctx context.Context, req resou
 		return
 	}
 
-	payloadVersion := plan.PayloadVersion.ValueString()
+	payloadVersion := "1.0"
 	destinationId := plan.DestinationID.ValueString()
 
 	body := notifications.CreateSubscriptionJSONRequestBody{
