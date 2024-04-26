@@ -205,4 +205,29 @@ func (r *notificationDestinationResource) Update(ctx context.Context, req resour
 
 // Delete deletes the resource and removes the Terraform state on success.
 func (r *notificationDestinationResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var state notificationDestinationResourceModel
+
+	diags := req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	client, err := notifications.NewClientWithResponses(RegionToEndpoint(state.Region.ValueString()),
+		notifications.WithRequestBefore(func(ctx context.Context, req *http.Request) error {
+			return r.providerData.Grantless.AuthorizeRequestWithScope(req, "sellingpartnerapi::notifications")
+		}),
+	)
+
+	if err != nil {
+		resp.Diagnostics.AddError("Error creating notifications client", err.Error())
+		return
+	}
+
+	_, err = client.DeleteDestinationWithResponse(ctx, state.ID.ValueString())
+
+	if err != nil {
+		resp.Diagnostics.AddError("Error deleting destination", err.Error())
+		return
+	}
 }
