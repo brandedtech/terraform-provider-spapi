@@ -162,4 +162,34 @@ func (r *notificationSubscriptionResource) Update(ctx context.Context, req resou
 
 // Delete deletes the resource and removes the Terraform state on success.
 func (r *notificationSubscriptionResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var state notificationSubscriptionModel
+
+	diags := req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	client, err := notifications.NewClientWithResponses("https://sellingpartnerapi-na.amazon.com",
+		notifications.WithRequestBefore(func(ctx context.Context, req *http.Request) error {
+			return r.sellingPartner.AuthorizeRequestWithScope(req, "sellingpartnerapi::notifications")
+		}),
+	)
+	if err != nil {
+		resp.Diagnostics.AddError("Error creating notifications client", err.Error())
+		return
+	}
+
+	subscriptionDeleteResp, err := client.DeleteSubscriptionByIdWithResponse(ctx, notifications.NotificationType(state.NotificationType.ValueString()), state.ID.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Error deleting subscription", err.Error())
+		return
+	}
+
+	if subscriptionDeleteResp.Model.Errors != nil {
+		for _, error := range *subscriptionDeleteResp.Model.Errors {
+			resp.Diagnostics.AddError("Error deleting subscription", error.Message)
+		}
+		return
+	}
 }
