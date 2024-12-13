@@ -3,6 +3,7 @@ module terraform-provider-spapi
 go 1.21
 
 require (
+	github.com/brandedtech/sp-api-sdk v0.0.0-20240405104727-3fc460ca096e
 	github.com/hashicorp/go-version v1.6.0
 	github.com/hashicorp/terraform-plugin-docs v0.18.0
 	github.com/hashicorp/terraform-plugin-framework v1.7.0
@@ -21,7 +22,6 @@ require (
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/armon/go-radix v1.0.0 // indirect
 	github.com/bgentry/speakeasy v0.1.0 // indirect
-	github.com/brandedtech/sp-api-sdk v0.0.0-20240405104727-3fc460ca096e // indirect
 	github.com/cloudflare/circl v1.3.7 // indirect
 	github.com/fatih/color v1.16.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
@@ -70,7 +70,7 @@ require (
 	golang.org/x/crypto v0.21.0 // indirect
 	golang.org/x/exp v0.0.0-20230809150735-7b3493d9a819 // indirect
 	golang.org/x/mod v0.15.0 // indirect
-	golang.org/x/net v0.21.0 // indirect
+	golang.org/x/net v0.23.0 // indirect
 	golang.org/x/sys v0.18.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/tools v0.13.0 // indirect
